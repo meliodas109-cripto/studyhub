@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyHub - Révision, Cote R & Planificateur Multi-Cours</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        .flashcard-inner { transition: transform 0.6s; transform-style: preserve-3d; }
+        .flashcard-flipped { transform: rotateY(180deg); }
+        .flashcard-front, .flashcard-back { backface-visibility: hidden; }
+        .flashcard-back { transform: rotateY(180deg); }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-200">
+
+    <div id="app" class="flex flex-col md:flex-row min-h-screen">
+        <!-- Sidebar Navigation -->
+        <aside class="w-full md:w-64 bg-slate-900 text-slate-200 p-4 flex flex-col justify-between shadow-xl">
+            <div>
+                <div class="flex items-center gap-3 px-2 py-4 border-b border-slate-800 mb-6">
+                    <div class="bg-indigo-600 p-2 rounded-xl">
+                        <i data-lucide="graduation-cap" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight text-white">StudyHub</h1>
+                        <span class="text-xs text-indigo-400 font-medium">Objectif Cote R 31+</span>
+                    </div>
+                </div>
+
+                <nav class="space-y-1" id="nav-tabs">
+                    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-sm font-medium bg-indigo-600 text-white">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Tableau de bord
+                    </button>
+                    <button onclick="switchTab('coter')" id="tab-coter" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-sm font-medium hover:bg-slate-800 text-slate-400">
+                        <i data-lucide="calculator" class="w-5 h-5"></i> Cote R & Multi-Examens
+                    </button>
+                    <button onclick="switchTab('notes')" id="tab-notes" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-sm font-medium hover:bg-slate-800 text-slate-400">
+                        <i data-lucide="book-open" class="w-5 h-5"></i> Mes Notes & Médias
+                    </button>
+                    <button onclick="switchTab('flashcards')" id="tab-flashcards" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-sm font-medium hover:bg-slate-800 text-slate-400">
+                        <i data-lucide="brain" class="w-5 h-5"></i> Flashcards
+                    </button>
+                    <button onclick="switchTab('pomodoro')" id="tab-pomodoro" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-sm font-medium hover:bg-slate-800 text-slate-400">
+                        <i data-lucide="timer" class="w-5 h-5"></i> Minuteur Pomodoro
+                    </button>
+                    <button onclick="switchTab('ai-tutor')" id="tab-ai-tutor" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition text-sm font-medium hover:bg-slate-800 text-slate-400">
+                        <i data-lucide="bot" class="w-5 h-5"></i> Professeur IA
+                    </button>
+                </nav>
+            </div>
+
+            <div class="mt-8 pt-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-400">
+                <button onclick="exportData()" class="hover:text-white flex items-center gap-1"><i data-lucide="download" class="w-4 h-4"></i> Exporter JSON</button>
+                <label class="hover:text-white flex items-center gap-1 cursor-pointer">
+                    <i data-lucide="upload" class="w-4 h-4"></i> Importer
+                    <input type="file" id="import-file" class="hidden" onchange="importData(event)">
+                </label>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-4 md:p-8 overflow-y-auto">
+            
+            <!-- SECTION: TABLEAU DE BORD -->
+            <section id="content-dashboard" class="space-y-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+                    <div>
+                        <h2 class="text-2xl font-bold">Objectif Décembre : Cote R 31 🚀</h2>
+                        <p class="text-slate-500 text-sm mt-1">Prépare tes évaluations multi-cours et maximise ton score Z.</p>
+                    </div>
+                    <div class="flex items-center gap-3 bg-indigo-50 dark:bg-slate-700/50 px-4 py-2 rounded-xl">
+                        <i data-lucide="flame" class="w-6 h-6 text-amber-500"></i>
+                        <div>
+                            <span class="text-xs text-slate-400 font-medium uppercase block">Série d'étude</span>
+                            <span class="font-bold text-lg text-slate-800 dark:text-slate-100" id="dash-streak">0 Jours</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                        <div class="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-xl text-blue-600 dark:text-blue-400">
+                            <i data-lucide="target" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-400 font-medium">Cote R Actuelle</span>
+                            <h3 class="text-2xl font-bold" id="dash-coter">26.00</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                        <div class="bg-amber-100 dark:bg-amber-900/30 p-3 rounded-xl text-amber-600 dark:text-amber-400">
+                            <i data-lucide="clock" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-400 font-medium">Temps d'étude total</span>
+                            <h3 class="text-2xl font-bold" id="dash-time">0 min</h3>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                        <div class="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-xl text-emerald-600 dark:text-emerald-400">
+                            <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-400 font-medium">Flashcards maîtrisées</span>
+                            <h3 class="text-2xl font-bold" id="dash-cards-mastered">0%</h3>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: COTE R & OPTIMISATEUR MULTI-EXAMENS -->
+            <section id="content-coter" class="space-y-6 hidden">
+                <div class="bg-gradient-to-r from-indigo-900 to-slate-900 text-white p-6 rounded-2xl shadow-lg">
+                    <h2 class="text-2xl font-bold">Optimiseur Multi-Évaluations & Cote R</h2>
+                    <p class="text-indigo-200 text-sm mt-1">Ajoute tous tes examens de la semaine (Écologie, Philo, Français...) et génère un planning d'étude global équilibré.</p>
+                </div>
+
+                <!-- FORMULAIRE AJOUT D'ÉVALUATION -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <h3 class="font-bold text-lg flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i> Ajouter une Évaluation à la Semaine
+                        </h3>
+                        <label class="cursor-pointer bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-medium text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition">
+                            <i data-lucide="file-up" class="w-4 h-4 text-indigo-500"></i> Importer un fichier (.txt, .md)
+                            <input type="file" id="eval-file-input" accept=".txt,.md" class="hidden" onchange="importEvalFile(event)">
+                        </label>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Matière / Cours</label>
+                            <input type="text" id="eval-title" placeholder="Ex: Écologie, Français, Philo" class="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Pondération (%)</label>
+                            <input type="number" id="eval-weight" placeholder="Ex: 25" class="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Échéance (jours restant)</label>
+                            <input type="number" id="eval-days" placeholder="Ex: 14" class="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Contenu / Concepts de l'examen</label>
+                        <textarea id="eval-content" rows="3" placeholder="Colle les sujets clés ou résumés de ce cours..." class="w-full bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm"></textarea>
+                    </div>
+
+                    <button onclick="addEvaluationToList()" class="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-2 text-sm">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Ajouter cet examen à ma liste
+                    </button>
+                </div>
+
+                <!-- LISTE DES ÉVALUATIONS ET PLANIFICATION GLOBALE -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-lg flex items-center gap-2">
+                            <i data-lucide="list-checks" class="w-5 h-5 text-indigo-500"></i> Mes Évaluations Programmées
+                        </h3>
+                        <span id="eval-count-badge" class="text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300 font-bold px-2.5 py-1 rounded-full">0 cours</span>
+                    </div>
+
+                    <div id="eval-list-container" class="space-y-3">
+                        <p class="text-slate-400 text-sm italic">Aucun examen ajouté pour le moment.</p>
+                    </div>
+
+                    <button onclick="generateGlobalMultiPlan()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow transition flex items-center justify-center gap-2">
+                        <i data-lucide="sparkles" class="w-5 h-5"></i> Générer le Planning d'Étude Global (Tous les cours)
+                    </button>
+
+                    <!-- BLOC DE SORTIE DU PLANNING MULTI-COURS -->
+                    <div id="multi-eval-output" class="hidden mt-6 p-5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-indigo-200 dark:border-indigo-900 space-y-4">
+                        <div class="flex justify-between items-center border-b border-indigo-100 dark:border-indigo-900 pb-3">
+                            <h4 class="font-bold text-md text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                                <i data-lucide="calendar" class="w-5 h-5"></i> Planning Équilibré pour Maximiser ta Cote R :
+                            </h4>
+                            <button onclick="exportMultiPlanToFile()" class="bg-indigo-100 dark:bg-indigo-900/60 hover:bg-indigo-200 text-indigo-700 dark:text-indigo-300 font-semibold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+                                <i data-lucide="file-down" class="w-4 h-4"></i> Exporter le planning (.txt)
+                            </button>
+                        </div>
+                        <div id="multi-plan-content" class="text-sm space-y-4"></div>
+                    </div>
+                </div>
+
+                <!-- CALCULATEUR DE COTE R GLOBAL -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
+                    <h3 class="font-bold text-lg">Calculateur Global de Cote R</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Ta Note (%)</label>
+                            <input type="number" id="calc-grade" placeholder="85" class="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Moyenne du groupe (%)</label>
+                            <input type="number" id="calc-avg" placeholder="72" class="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Écart-Type (σ)</label>
+                            <input type="number" id="calc-std" placeholder="10" class="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Force Groupe (ISG)</label>
+                            <input type="number" id="calc-isg" placeholder="75" class="w-full bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm">
+                        </div>
+                    </div>
+                    <button onclick="calculateCoteR()" class="bg-slate-900 text-white dark:bg-slate-700 font-semibold px-6 py-2.5 rounded-xl text-sm">Calculer la Cote R du cours</button>
+                    <div id="coter-result" class="text-xl font-bold text-indigo-600 hidden"></div>
+                </div>
+            </section>
+
+            <!-- SECTION: NOTES & MÉDIAS -->
+            <section id="content-notes" class="space-y-6 hidden">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold">Mes Notes & Médias</h2>
+                    <button onclick="openNoteModal()" class="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-xl text-sm flex items-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Nouvelle Note
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="notes-grid"></div>
+            </section>
+
+            <!-- SECTION: FLASHCARDS -->
+            <section id="content-flashcards" class="space-y-6 hidden">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-bold">Session de Flashcards</h2>
+                    <button onclick="openCardModal()" class="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-xl text-sm flex items-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Ajouter une carte
+                    </button>
+                </div>
+
+                <div id="flashcard-container" class="flex flex-col items-center justify-center min-h-[350px]">
+                    <!-- Flashcard interactive rendue en JS -->
+                </div>
+            </section>
+
+            <!-- SECTION: MINUTEUR POMODORO -->
+            <section id="content-pomodoro" class="space-y-6 hidden">
+                <div class="max-w-xl mx-auto bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 text-center space-y-6">
+                    <h2 class="text-2xl font-bold">Minuteur d'Étude Intense</h2>
+                    <div class="text-6xl font-black text-indigo-600 font-mono" id="timer-display">25:00</div>
+                    <div class="flex justify-center gap-4">
+                        <button id="timer-start" onclick="toggleTimer()" class="bg-indigo-600 text-white font-bold px-8 py-3 rounded-2xl shadow">Démarrer</button>
+                        <button onclick="resetTimer()" class="bg-slate-200 dark:bg-slate-700 font-bold px-6 py-3 rounded-2xl">Réinitialiser</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: PROFESSEUR IA -->
+            <section id="content-ai-tutor" class="space-y-6 hidden">
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col h-[70vh]">
+                    <div class="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 pb-4 mb-4">
+                        <div class="bg-indigo-600 p-2 rounded-xl text-white">
+                            <i data-lucide="bot" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold">Professeur IA StudyHub</h3>
+                            <p class="text-xs text-slate-400">Pose tes questions de révision ou demande des explications de cours.</p>
+                        </div>
+                    </div>
+                    <div id="chat-messages" class="flex-1 overflow-y-auto space-y-4 pr-2"></div>
+                    <div class="mt-4 flex gap-2">
+                        <input type="text" id="chat-input" placeholder="Pose une question sur ton cours..." class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none">
+                        <button onclick="sendChatMessage()" class="bg-indigo-600 text-white font-semibold px-6 py-3 rounded-xl flex items-center justify-center">
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- SCRIPT DE LOGIQUE -->
+    <script>
+        let state = JSON.parse(localStorage.getItem('studyhub_data')) || {
+            notes: [],
+            flashcards: [],
+            evaluations: [],
+            streak: 1,
+            studyTimeMinutes: 0,
+            coter: 26.0
+        };
+
+        if(!state.evaluations) state.evaluations = [];
+
+        function saveState() {
+            localStorage.setItem('studyhub_data', JSON.stringify(state));
+            updateUI();
+        }
+
+        function switchTab(tabId) {
+            ['dashboard', 'coter', 'notes', 'flashcards', 'pomodoro', 'ai-tutor'].forEach(id => {
+                document.getElementById(`content-${id}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-${id}`);
+                if(btn) {
+                    btn.classList.remove('bg-indigo-600', 'text-white');
+                    btn.classList.add('hover:bg-slate-800', 'text-slate-400');
+                }
+            });
+            document.getElementById(`content-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            if(activeBtn) {
+                activeBtn.classList.add('bg-indigo-600', 'text-white');
+                activeBtn.classList.remove('hover:bg-slate-800', 'text-slate-400');
+            }
+        }
+
+        // AJOUT D'UNE ÉVALUATION A LA LISTE
+        function addEvaluationToList() {
+            const title = document.getElementById('eval-title').value.trim();
+            const weight = parseFloat(document.getElementById('eval-weight').value) || 20;
+            const days = parseInt(document.getElementById('eval-days').value) || 14;
+            const content = document.getElementById('eval-content').value.trim();
+
+            if (!title) {
+                alert("Donne au moins un nom de cours ou d'examen !");
+                return;
+            }
+
+            const newEval = {
+                id: Date.now(),
+                title,
+                weight,
+                days,
+                content
+            };
+
+            state.evaluations.push(newEval);
+
+            // Générer automatiquement des cartes mémoires pour ce cours
+            if(content) {
+                const lines = content.split('\n').filter(l => l.trim().length > 5);
+                lines.slice(0, 4).forEach((line, i) => {
+                    state.flashcards.push({
+                        id: Date.now() + i,
+                        subject: title,
+                        front: `${title} - Concept #${i+1}`,
+                        back: line,
+                        mastered: false
+                    });
+                });
+            }
+
+            // Réinitialiser les champs
+            document.getElementById('eval-title').value = '';
+            document.getElementById('eval-weight').value = '';
+            document.getElementById('eval-days').value = '';
+            document.getElementById('eval-content').value = '';
+
+            saveState();
+            renderEvalList();
+        }
+
+        function removeEvaluation(id) {
+            state.evaluations = state.evaluations.filter(e => e.id !== id);
+            saveState();
+            renderEvalList();
+        }
+
+        function renderEvalList() {
+            const container = document.getElementById('eval-list-container');
+            const badge = document.getElementById('eval-count-badge');
+            badge.innerText = `${state.evaluations.length} cours`;
+
+            if (state.evaluations.length === 0) {
+                container.innerHTML = `<p class="text-slate-400 text-sm italic">Aucun examen ajouté pour le moment.</p>`;
+                return;
+            }
+
+            container.innerHTML = state.evaluations.map(e => `
+                <div class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div>
+                        <span class="font-bold text-sm text-indigo-600 dark:text-indigo-400">${e.title}</span>
+                        <div class="text-xs text-slate-500 mt-0.5">Pondération: <strong>${e.weight}%</strong> | Échéance: <strong>${e.days} jours</strong></div>
+                    </div>
+                    <button onclick="removeEvaluation(${e.id})" class="text-rose-500 hover:text-rose-700 p-1">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // GENERATEUR DE PLANNING GLOBAL MULTI-COURS
+        function generateGlobalMultiPlan() {
+            if (state.evaluations.length === 0) {
+                alert("Ajoute au moins une évaluation avant de générer le planning !");
+                return;
+            }
+
+            const totalWeight = state.evaluations.reduce((acc, curr) => acc + curr.weight, 0);
+            const outputContainer = document.getElementById('multi-eval-output');
+            const outputContent = document.getElementById('multi-plan-content');
+
+            let html = `
+                <div class="bg-indigo-50 dark:bg-indigo-950/50 p-4 rounded-xl space-y-2">
+                    <p class="font-bold text-indigo-700 dark:text-indigo-300">📊 Charge Totale de la Semaine : ${state.evaluations.length} examens (${totalWeight}% du bulletin global)</p>
+                    <p class="text-xs text-slate-600 dark:text-slate-300">Pour passer de 26 à 31 de Cote R, l'accent doit être mis prioritairement sur les cours ayant le plus fort poids et les échéances les plus courtes.</p>
+                </div>
+
+                <div class="space-y-3">
+                    <h5 class="font-bold text-slate-800 dark:text-slate-200">🎯 Répartition du Temps d'Étude Prioritaire :</h5>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            `;
+
+            state.evaluations.forEach(e => {
+                const ratio = Math.round((e.weight / totalWeight) * 100);
+                html += `
+                    <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <div class="font-bold text-xs text-indigo-500">${e.title} (${e.weight}%)</div>
+                        <div class="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">${ratio}% du temps total de révision</div>
+                        <div class="text-xs text-slate-400 mt-0.5">Priorité Cote R : ${ratio > 30 ? '🔴 Très Haute' : '🟡 Modérée'}</div>
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                </div>
+
+                <div class="space-y-2 pt-2">
+                    <h5 class="font-bold">📅 Calendrier de Révision Suggéré Jour par Jour :</h5>
+                    <ul class="list-disc pl-5 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+                        <li><strong>Jours 1 à 4 :</strong> Concentre 60% de tes Pomodoros sur le cours à plus forte pondération et alterne avec les flashcards des autres matières.</li>
+                        <li><strong>Jours 5 à 9 :</strong> Révision croisée (1 session Pomodoro Écologie, 1 session Philo, 1 session Français).</li>
+                        <li><strong>Derniers 3 jours :</strong> Simulations d'examens à livre fermé sur la liste complète des cours.</li>
+                    </ul>
+                </div>
+            `;
+
+            outputContent.innerHTML = html;
+            outputContainer.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function exportMultiPlanToFile() {
+            const contentDiv = document.getElementById('multi-plan-content');
+            if(!contentDiv || !contentDiv.innerText) return;
+
+            const fullText = `PLAN MULTI-COURS COTE R 31+\n` + "=".repeat(40) + "\n\n" + contentDiv.innerText;
+            const dataStr = "data:text/plain;charset=utf-8," + encodeURIComponent(fullText);
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Planning_Multi_Examens.txt`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // IMPORTER FICHIER DANS DE PLAN D'ATTAQUE
+        function importEvalFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('eval-content').value = e.target.result;
+                if(!document.getElementById('eval-title').value) {
+                    document.getElementById('eval-title').value = file.name.replace(/\.[^/.]+$/, "");
+                }
+                alert("Fichier de cours chargé !");
+            };
+            reader.readAsText(file);
+        }
+
+        // CALCULATEUR DE COTE R
+        function calculateCoteR() {
+            const grade = parseFloat(document.getElementById('calc-grade').value);
+            const avg = parseFloat(document.getElementById('calc-avg').value);
+            const std = parseFloat(document.getElementById('calc-std').value);
+            const isg = parseFloat(document.getElementById('calc-isg').value) || 75;
+
+            if (isNaN(grade) || isNaN(avg) || isNaN(std)) {
+                alert("Remplis les trois premières cases !");
+                return;
+            }
+
+            const zScore = (grade - avg) / std;
+            const crsg = (zScore + (isg - 75) / 14) * 5 + 25;
+            const finalCoteR = Math.max(10, Math.min(50, crsg)).toFixed(2);
+
+            const resDiv = document.getElementById('coter-result');
+            resDiv.innerHTML = `Cote R estimée pour ce cours : <strong>${finalCoteR}</strong> (Score Z: ${zScore.toFixed(2)})`;
+            resDiv.classList.remove('hidden');
+        }
+
+        // CHATBOT PROFESSEUR IA
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(!text) return;
+
+            const chatDiv = document.getElementById('chat-messages');
+            chatDiv.innerHTML += `
+                <div class="flex justify-end">
+                    <div class="bg-indigo-600 text-white rounded-2xl px-4 py-2 text-sm max-w-[80%]">${text}</div>
+                </div>
+            `;
+            input.value = '';
+
+            setTimeout(() => {
+                chatDiv.innerHTML += `
+                    <div class="flex justify-start">
+                        <div class="bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-2xl px-4 py-2 text-sm max-w-[80%]">
+                            Pour maximiser tes chances de faire monter ta Cote R sur ce sujet, assure-toi d'être capable d'expliquer ce concept à voix haute sans regarder tes notes. Veux-tu qu'on fasse un mini-quiz là-dessus ?
+                        </div>
+                    </div>
+                `;
+                chatDiv.scrollTop = chatDiv.scrollHeight;
+            }, 800);
+        }
+
+        // TIMER POMODORO
+        let timerInterval = null;
+        let timeLeft = 25 * 60;
+        function toggleTimer() {
+            const btn = document.getElementById('timer-start');
+            if(timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                btn.innerText = "Démarrer";
+            } else {
+                btn.innerText = "Pause";
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+                    const s = (timeLeft % 60).toString().padStart(2, '0');
+                    document.getElementById('timer-display').innerText = `${m}:${s}`;
+                    if(timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        alert("Session d'étude terminée ! Bravo !");
+                        state.studyTimeMinutes += 25;
+                        saveState();
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            timeLeft = 25 * 60;
+            document.getElementById('timer-display').innerText = "25:00";
+            document.getElementById('timer-start').innerText = "Démarrer";
+        }
+
+        function updateUI() {
+            document.getElementById('dash-streak').innerText = `${state.streak} Jours`;
+            document.getElementById('dash-coter').innerText = state.coter;
+            document.getElementById('dash-time').innerText = `${state.studyTimeMinutes} min`;
+            
+            const masteredCount = state.flashcards.filter(c => c.mastered).length;
+            const pct = state.flashcards.length > 0 ? Math.round((masteredCount / state.flashcards.length) * 100) : 0;
+            document.getElementById('dash-cards-mastered').innerText = `${pct}%`;
+
+            renderEvalList();
+            renderFlashcards();
+        }
+
+        function renderFlashcards() {
+            const container = document.getElementById('flashcard-container');
+            if(state.flashcards.length === 0) {
+                container.innerHTML = `<p class="text-slate-400">Aucune carte mémoire. Ajoute un examen pour générer des cartes automatiquement !</p>`;
+                return;
+            }
+            const card = state.flashcards[0];
+            container.innerHTML = `
+                <div class="w-full max-w-md bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-md border border-slate-200 dark:border-slate-700 text-center space-y-4">
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-500">${card.subject}</span>
+                    <h4 class="text-xl font-bold">${card.front}</h4>
+                    <p class="text-sm text-slate-500 border-t border-slate-100 dark:border-slate-700 pt-4">${card.back}</p>
+                </div>
+            `;
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "studyhub_backup.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                state = JSON.parse(e.target.result);
+                saveState();
+                alert("Données importées avec succès !");
+            };
+            reader.readAsText(file);
+        }
+
+        window.onload = () => {
+            lucide.createIcons();
+            updateUI();
+        };
+    </script>
+</body>
+</html>
